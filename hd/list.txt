@@ -8,6 +8,8 @@ HD/Menus/joingame_keep.png
 HD/Menus/joingame_lines.png
 HD/Menus/licence_keep.png
 HD/Menus/licence_lines.png
+HD/Menus/logo_maps_a_8x.png
+HD/Menus/logo_maps_b_8x.png
 HD/Menus/mainmenu_1x.png
 HD/Menus/mainmenu_bg_16x9.png
 HD/Menus/mainmenu_hover_0_8x.png

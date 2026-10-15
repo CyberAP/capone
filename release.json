@@ -1,0 +1,73 @@
+{
+ "build": "2026-10-15-1cc3977",
+ "files": {
+  "js": {
+   "url": "capone.f732bd8da0.js",
+   "raw": 245080
+  },
+  "wasm": {
+   "url": "capone.bdeec051d6.wasm.br",
+   "size": 2078941,
+   "raw": 27991599
+  },
+  "data": {
+   "url": "capone.fa436905dd.data.br",
+   "size": 6364172,
+   "raw": 41941106
+  },
+  "brotli": {
+   "url": "brotli-dec.62b26440a4.js",
+   "raw": 239797
+  }
+ },
+ "notes": [
+  "blanked /game/PICS/JOINGABU.bmp",
+  "blanked /game/PICS/JoinGame.bmp",
+  "blanked /game/PICS/STARTNBU.bmp",
+  "blanked /game/PICS/STARTNET.bmp",
+  "blanked /game/PICS/SyncWin.bmp",
+  "blanked /game/PICS/sincwin.bmp",
+  "subset /usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf: 414568 -> 54772 bytes",
+  "subset /usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf: 410820 -> 51816 bytes",
+  "subset /usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf: 370196 -> 60772 bytes"
+ ],
+ "sizes": {
+  "capone.bdeec051d6.wasm.br": {
+   "raw": 27991599,
+   "wire": 2078941
+  },
+  "capone.fa436905dd.data.br": {
+   "raw": 41941106,
+   "wire": 6364172
+  },
+  "capone.f732bd8da0.js": {
+   "raw": 245080,
+   "wire": 245080
+  },
+  "brotli-dec.62b26440a4.js": {
+   "raw": 239797,
+   "wire": 239797
+  },
+  "persist.573c4846ea.js": {
+   "raw": 15593,
+   "wire": 15593
+  },
+  "loader.c3e3da89a5.js": {
+   "raw": 12895,
+   "wire": 12895
+  },
+  "landing.d8bf04854c.css": {
+   "raw": 5647,
+   "wire": 5647
+  },
+  "logo.fce13a2325.webp": {
+   "raw": 77214,
+   "wire": 77214
+  },
+  "index.html": {
+   "raw": 24846,
+   "wire": 24846
+  }
+ },
+ "assets_bytes": 16066102
+}
