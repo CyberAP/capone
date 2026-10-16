@@ -2,8 +2,10 @@ HD/Menus/credit_keep.png
 HD/Menus/credit_lines.png
 HD/Menus/gameover_keep.png
 HD/Menus/gameover_lines.png
+HD/Menus/gameover_title_8x.png
 HD/Menus/gamewin_keep.png
 HD/Menus/gamewin_lines.png
+HD/Menus/gamewin_title_8x.png
 HD/Menus/joingame_keep.png
 HD/Menus/joingame_lines.png
 HD/Menus/licence_keep.png
@@ -31,8 +33,10 @@ HD/Menus/newgame_lines.png
 HD/Menus/preferen_1x.png
 HD/Menus/preferen_keep.png
 HD/Menus/preferen_lines.png
+HD/Menus/preferen_title_8x.png
 HD/Menus/scendisp_keep.png
 HD/Menus/scendisp_lines.png
+HD/Menus/scendisp_title_8x.png
 HD/Menus/startnet_keep.png
 HD/Menus/startnet_lines.png
 HD/Panel/panel_4x.png
