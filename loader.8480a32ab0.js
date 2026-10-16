@@ -11,7 +11,7 @@
 // «Играть»: the click is the user gesture that audio, fullscreen and pointer lock need, and
 // everything else (wasm compile, sound decode, saves restore) is done by then.
 //
-// Other files the page fetches (sfx/*, hd/*) get ?v=<content hash> appended through a fetch
+// Other files the page fetches (sfx/*) get ?v=<content hash> appended through a fetch
 // wrapper, so a new release never mixes with stale cached copies; the lookup is
 // case-insensitive (Pages is case-sensitive, the game's paths are not).
 (function () {
@@ -35,7 +35,7 @@
   }
   window.fetch = (input, init) => realFetch(typeof input === 'string' || input instanceof URL ? versioned(String(input)) : input, init);
 
-  const bg = versioned('hd/HD/Menus/mainmenu_bg_16x9.webp');
+  const bg = R.bg; // the menus' bill (the game's own copy is inside the data package)
   landing.style.setProperty('--bg-image', `url("${bg}")`);
 
   // ------------------------------------------------------------------ UI helpers

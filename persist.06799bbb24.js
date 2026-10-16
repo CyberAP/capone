@@ -24,7 +24,9 @@
 
   const ROOT = '/game';
   const DB_NAME = 'capone-saves', STORE = 'files';
-  const SKIP = /^\/game\/(Sound|HD|Portraits)(\/|$)/i;
+  // (also the free game's generated city and scenario: skirmish.cpp writes them anew at each
+  // start and removes them; its settings, skirmish.cfg, are kept)
+  const SKIP = /^\/game\/((Sound|HD|Portraits|Music)(\/|$)|Maps\/_skirmish\.map$|episode\/ep22\.epi$)/i;
   const SCAN_MS = 15000, FLUSH_MS = 300;
   const log = (t) => console.log('[persist] ' + t);
 
