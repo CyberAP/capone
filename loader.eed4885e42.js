@@ -40,7 +40,7 @@
 
   // ------------------------------------------------------------------ UI helpers
   const statusEl = $('landing-status'), bar = $('landing-bar-fill'), barBox = $('landing-bar');
-  const playBtn = $('landing-play'), fsBox = $('landing-fullscreen');
+  const playBtn = $('landing-play'), fsBtn = $('landing-fs');
   const setStatus = (t) => { statusEl.textContent = t; };
   const MB = (n) => (n / 1048576).toFixed(1).replace('.', ',');
   function fail(msg) {
@@ -48,8 +48,6 @@
     setStatus(msg);
     console.log('[release] ' + msg);
   }
-  try { fsBox.checked = localStorage.getItem('capone.fullscreen') !== '0'; } catch (e) {}
-  fsBox.addEventListener('change', () => { try { localStorage.setItem('capone.fullscreen', fsBox.checked ? '1' : '0'); } catch (e) {} });
 
   // Saves on the landing page: work before the game is loaded (IndexedDB only).
   function savesUi(exportBtn, importBtn, note) {
@@ -69,7 +67,7 @@
       } catch (e) { say('Не удалось: ' + e.message); }
     });
   }
-  savesUi($('landing-export'), $('landing-import'), $('landing-saves-note'));
+  // the landing page has no save export/import any more (the in-game ☰ menu keeps them)
 
   // ------------------------------------------------------------------ fullscreen
   const isFs = () => !!document.fullscreenElement;
@@ -85,6 +83,33 @@
     });
   }
   const toggleFullscreen = () => (isFs() ? document.exitFullscreen().catch(() => {}) : enterFullscreen());
+  // «Во весь экран» on the landing: the page goes fullscreen at once (the click is the gesture);
+  // «Играть» then starts the game at that size. Hidden while the page is fullscreen.
+  const syncFs = () => landing.classList.toggle('fullscreen', isFs());
+  document.addEventListener('fullscreenchange', syncFs);
+  if (!document.documentElement.requestFullscreen) fsBtn.hidden = true;
+  fsBtn.addEventListener('click', () => { enterFullscreen().then(syncFs); });
+  // The game takes the page's size as its screen once, when it starts (capone_host.c: the
+  // display mode); a later resize only refits that picture into the page. So the start waits
+  // until the size has settled: a fullscreen switch (the button, Alt+Enter) still under way grows
+  // the page a moment later. Settled = the same innerWidth x innerHeight x devicePixelRatio for
+  // 250 ms and 4 animation frames, at most 2 s.
+  let fsChangedAt = 0;
+  document.addEventListener('fullscreenchange', () => { fsChangedAt = performance.now(); });
+  function settledSize() {
+    return new Promise((resolve) => {
+      const tEnd = performance.now() + 2000;
+      let last = '', since = performance.now(), frames = 0;
+      const step = () => {
+        const t = performance.now(), now = `${innerWidth}x${innerHeight}@${devicePixelRatio}`;
+        if (now !== last) last = now, since = t, frames = 0; else frames++;
+        const quiet = Math.min(t - since, t - fsChangedAt);
+        if ((quiet >= 250 && frames >= 4) || t > tEnd) resolve(now); else requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
   window.addEventListener('keydown', (e) => {                       // Alt+Enter, as in old Windows games
     if (e.altKey && (e.key === 'Enter' || e.code === 'Enter')) { e.preventDefault(); e.stopImmediatePropagation(); toggleFullscreen(); }
   }, true);
@@ -235,7 +260,7 @@
     async function play() {
       if (!ready || landing.classList.contains('started')) return;
       landing.classList.add('started');
-      if (fsBox.checked) await enterFullscreen();
+      timing.startSize = await settledSize();
       landing.hidden = true;
       timing.startMs = performance.now() - t0;
       const canvas = document.getElementById('canvas');

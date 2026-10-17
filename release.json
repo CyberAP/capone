@@ -1,14 +1,14 @@
 {
- "build": "2026-10-18-307609a",
+ "build": "2026-10-18-5adf20b",
  "files": {
   "js": {
-   "url": "capone.65b074fc9a.js",
+   "url": "capone.f4318423ba.js",
    "raw": 268757
   },
   "wasm": {
-   "url": "capone.cc0fdf7db1.wasm.br",
-   "size": 2395958,
-   "raw": 29253793
+   "url": "capone.5aa387c4ff.wasm.br",
+   "size": 2396032,
+   "raw": 29254315
   },
   "data": {
    "url": "capone.68f1d301ac.data.br",
@@ -32,15 +32,15 @@
   "subset /usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf: 370196 -> 60772 bytes"
  ],
  "sizes": {
-  "capone.cc0fdf7db1.wasm.br": {
-   "raw": 29253793,
-   "wire": 2395958
+  "capone.5aa387c4ff.wasm.br": {
+   "raw": 29254315,
+   "wire": 2396032
   },
   "capone.68f1d301ac.data.br": {
    "raw": 50490893,
    "wire": 13311256
   },
-  "capone.65b074fc9a.js": {
+  "capone.f4318423ba.js": {
    "raw": 268757,
    "wire": 268757
   },
@@ -52,13 +52,13 @@
    "raw": 18769,
    "wire": 18769
   },
-  "loader.8480a32ab0.js": {
-   "raw": 12915,
-   "wire": 12915
+  "loader.eed4885e42.js": {
+   "raw": 14305,
+   "wire": 14305
   },
-  "landing.d8bf04854c.css": {
-   "raw": 5647,
-   "wire": 5647
+  "landing.00d7f7fb7d.css": {
+   "raw": 5182,
+   "wire": 5182
   },
   "logo.3824ebf504.webp": {
    "raw": 77432,
@@ -69,8 +69,8 @@
    "wire": 181748
   },
   "index.html": {
-   "raw": 24892,
-   "wire": 24892
+   "raw": 23823,
+   "wire": 23823
   }
  },
  "assets_bytes": 10009900
