@@ -174,10 +174,59 @@
     };
   }
 
+  // One-time progress reset (2026-10-18, user: «В браузерном режиме выставь прогресс на 0»).
+  // Releases up to 2026-10-18-ab5a8d5 shipped a Capone.config with the campaign already at
+  // episode 4 (lines 9 / 11: the episode chosen / the furthest reached = 4); the game saves its
+  // whole config whenever a setting changes, so visitors may hold that copy. Decided once per
+  // browser (the marker file below, written on the first visit with this release whatever the
+  // outcome, so a later real "4 / 4" is never touched): the stored Capone.config goes back to
+  // episode 0 only if it still holds exactly the shipped progress (lines 9, 10, 11 = "4",
+  // "0 0 0 0", "4") and nothing else of the game's is stored (no saves or other files; the free
+  // game's skirmish.cfg does not count). A player who won a mission or kept anything else keeps it.
+  const PROGRESS_MARK = ROOT + '/.progress-reset-1';
+  const CONFIG = ROOT + '/Capone.config';
+  function progressReset(records) {
+    if (records.some((r) => r.path === PROGRESS_MARK)) return [];
+    const mark = { path: PROGRESS_MARK, data: new TextEncoder().encode('progress checked ' + new Date().toISOString() + '\n'), mtime: Date.now() };
+    records.push(mark);
+    const cfg = records.find((r) => r.path === CONFIG);
+    const others = records.filter((r) => r !== cfg && r !== mark && !/\/skirmish\.cfg$/i.test(r.path));
+    if (!cfg || others.length) {
+      log('progress: kept' + (cfg ? ` (${others.length} other stored file(s))` : ' (no stored config)'));
+      return [mark];
+    }
+    // the bytes as they are (the player's name is cp1251): split on CR LF by hand
+    const bytes = cfg.data instanceof Uint8Array ? cfg.data : new Uint8Array(cfg.data);
+    const lines = [];
+    let start = 0;
+    for (let i = 0; i + 1 < bytes.length; i++)
+      if (bytes[i] === 13 && bytes[i + 1] === 10) { lines.push(bytes.subarray(start, i)); start = i + 2; i++; }
+    lines.push(bytes.subarray(start));
+    const ascii = (b) => String.fromCharCode(...b);
+    if (lines.length < 11 || ascii(lines[8]) !== '4' || ascii(lines[9]) !== '0 0 0 0' || ascii(lines[10]) !== '4') {
+      log("progress: kept (the stored campaign progress is the player's own)");
+      return [mark];
+    }
+    lines[8] = lines[10] = new Uint8Array([48]);   // "0"
+    const size = lines.reduce((n, l) => n + l.length, 0) + 2 * (lines.length - 1);
+    const data = new Uint8Array(size);
+    let at = 0;
+    lines.forEach((l, i) => { if (i) { data[at++] = 13; data[at++] = 10; } data.set(l, at); at += l.length; });
+    cfg.data = data, cfg.mtime = Date.now();
+    log('progress: the shipped episode-4 progress reset to episode 0 (once)');
+    return [mark, cfg];
+  }
+
   // Right before main(): the saved files go over the package's stock ones.
   function restoreAndArm() {
     if (armed || !fsReady()) return;
     const t0 = performance.now();
+    if (restored) {
+      try {
+        const changed = progressReset(restored);
+        if (changed.length) putRecords(changed).catch((e) => log('progress: save failed: ' + e));
+      } catch (e) { log('progress: ' + e); }
+    }
     for (const r of restored || []) {
       if (!inScope(r.path)) continue;
       try { writeIntoFs(r.path, r.data instanceof Uint8Array ? r.data : new Uint8Array(r.data), r.mtime); stats.restored++; }
