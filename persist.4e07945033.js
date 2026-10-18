@@ -11,6 +11,9 @@
 //   save:    FS.close of a file opened for writing, FS.rename and FS.unlink under /game mark
 //            the path; marked paths are written to the database 300 ms later. A scan of /game
 //            every 15 s and on page hide catches anything the hooks missed.
+//   saves:   a save game is deflated, built and stored by a Web Worker (the save writer below),
+//            which then hands the file to /game; once it runs, the puts and deletes above go
+//            through it too (one queue, in order).
 //
 // The page's own files (Sound/: the decoded effects; HD/, Portraits/: the art placeholders)
 // are never saved. window.caponePersist exports and imports the saves as a .zip (stored or
@@ -131,16 +134,29 @@
       }
     }
     flushing = flushing.then(async () => {
+      const viaWorker = !!worker;
       try {
-        if (puts.length) await putRecords(puts);
-        if (dels.length) await deletePaths(dels);
+        await store(puts, dels);
         stats.saved += puts.length, stats.deleted += dels.length, stats.lastSave = Date.now();
         if (puts.length || dels.length) log(`saved ${puts.map((r) => r.path.slice(ROOT.length + 1)).join(', ') || '-'}` +
                                             (dels.length ? `; removed ${dels.join(', ')}` : ''));
-      } catch (e) { log('save failed: ' + e); }
+      } catch (e) {
+        log('save failed: ' + e);
+        if (viaWorker && !worker) for (const p of paths) mark(p);   // the worker died with them: once more, here
+      }
     });
     return flushing;
   }
+
+  // Puts and deletes in IndexedDB: through the save worker once it runs (one queue with the
+  // saves' own puts, in the order asked: a delete never overtakes a save), else here.
+  async function store(puts, dels) {
+    if (worker) return call({ op: 'store', puts, dels }, puts.filter(ownsBuffer).map((r) => r.data.buffer));
+    if (puts.length) await putRecords(puts);
+    if (dels.length) await deletePaths(dels);
+  }
+  // FS.readFile's arrays own their buffers: only such a buffer is handed over (transferred).
+  const ownsBuffer = (r) => r.data.byteOffset === 0 && r.data.byteLength === r.data.buffer.byteLength;
 
   // The safety net: any file under /game whose mtime changed, appeared or vanished.
   function scan() {
@@ -259,6 +275,192 @@
     };
   }
 
+  // ------------------------------------------------------------------ the save writer (a Web Worker)
+  // A save game is written off the main thread (src/quicksave.cpp, savefile_web.cpp): the game
+  // takes its memory snapshot and hands the chunks here (saveStart, the bytes transferred). The
+  // worker computes each chunk's CRC-32, deflates the flagged ones with the browser's
+  // CompressionStream('deflate') (the zlib format: savefile::Read's mz_uncompress takes it), builds
+  // the file of src/savefile.h and puts it into IndexedDB in one transaction (a page closed before
+  // it commits keeps the slot's previous record whole), then sends the file back; here it goes
+  // into /game, where the game reads it, and savePoll tells the game it is done. From the first
+  // save on, persist's own puts and deletes go through the worker too: one queue in the order
+  // asked. No worker (no Worker or CompressionStream): saveStart answers 0 and the game writes
+  // the file itself, as before.
+  function workerMain() {
+    const CRC = new Uint32Array(256 * 8);   // slicing by 8
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; CRC[n] = c >>> 0; }
+    for (let t = 1; t < 8; t++) for (let n = 0; n < 256; n++) { const p = CRC[(t - 1) * 256 + n]; CRC[t * 256 + n] = (p >>> 8) ^ CRC[p & 255]; }
+    function crc32(b) {
+      let c = 0xffffffff, i = 0;
+      for (const n8 = b.length & ~7; i < n8; i += 8) {
+        const x = (b[i] | b[i + 1] << 8 | b[i + 2] << 16 | b[i + 3] << 24) ^ c;
+        c = CRC[1792 + (x & 255)] ^ CRC[1536 + ((x >>> 8) & 255)] ^ CRC[1280 + ((x >>> 16) & 255)] ^ CRC[1024 + (x >>> 24)] ^
+            CRC[768 + b[i + 4]] ^ CRC[512 + b[i + 5]] ^ CRC[256 + b[i + 6]] ^ CRC[b[i + 7]];
+      }
+      for (; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8);
+      return (c ^ 0xffffffff) >>> 0;
+    }
+    const deflate = async (u8) =>
+      new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
+    // savefile.h: "CAPSAVE\0" u16 major u16 minor u32 count; per chunk u32 tag, version, flags
+    // (1 = deflated), raw size, stored size, CRC-32 of the raw bytes; the stored bytes.
+    async function build(m) {
+      const parts = [];
+      let size = 16;
+      for (const c of m.chunks) {
+        const raw = new Uint8Array(c.data);
+        const body = c.deflate && raw.length ? await deflate(raw) : raw;
+        const h = new DataView(new ArrayBuffer(24));
+        h.setUint32(0, c.tag, true), h.setUint32(4, c.version, true), h.setUint32(8, c.deflate && raw.length ? 1 : 0, true);
+        h.setUint32(12, raw.length, true), h.setUint32(16, body.length, true), h.setUint32(20, crc32(raw), true);
+        parts.push(new Uint8Array(h.buffer), body);
+        size += 24 + body.length;
+      }
+      const file = new Uint8Array(size), v = new DataView(file.buffer);
+      file.set([67, 65, 80, 83, 65, 86, 69, 0]);   // CAPSAVE\0
+      v.setUint16(8, m.major, true), v.setUint16(10, m.minor, true), v.setUint32(12, m.chunks.length, true);
+      let at = 16;
+      for (const p of parts) file.set(p, at), at += p.length;
+      return file;
+    }
+    let dbp = null, dbName = '', storeName = '';
+    function db() {
+      if (!dbp) dbp = new Promise((resolve, reject) => {
+        const req = indexedDB.open(dbName, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(storeName, { keyPath: 'path' });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error('IndexedDB blocked'));
+      });
+      return dbp;
+    }
+    const write = (puts, dels) => db().then((d) => new Promise((resolve, reject) => {
+      const t = d.transaction(storeName, 'readwrite'), s = t.objectStore(storeName);
+      for (const r of puts) s.put(r);
+      for (const p of dels) s.delete(p);
+      t.oncomplete = () => resolve();
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error || new Error('aborted'));
+    }));
+    async function handle(m) {
+      if (m.op === 'init') { dbName = m.db, storeName = m.store; return; }
+      if (m.op === 'store') {
+        try { if (m.puts.length || m.dels.length) await write(m.puts, m.dels); self.postMessage({ op: 'ack', seq: m.seq }); }
+        catch (e) { self.postMessage({ op: 'ack', seq: m.seq, error: String(e) }); }
+        return;
+      }
+      if (m.op === 'save') {
+        const t0 = performance.now();
+        let file = null, error = '', stored = false;
+        try {
+          file = await build(m);
+          if (m.store) {
+            try { await write([{ path: m.path, data: file, mtime: Date.now() }], []); stored = true; }
+            catch (e) { error = 'IndexedDB: ' + e; }   // the file still goes into /game (persist puts it again)
+          }
+        } catch (e) { error = String(e && e.message || e); file = null; }
+        self.postMessage({ op: 'saved', id: m.id, file: file && file.buffer, stored, error, ms: performance.now() - t0 },
+                         file ? [file.buffer] : []);
+      }
+    }
+    let queue = Promise.resolve();   // one message at a time, in order
+    self.onmessage = (e) => { queue = queue.then(() => handle(e.data)); };
+  }
+
+  let worker = null, workerFailed = false, callSeq = 0, saveSeq = 0;
+  const calls = new Map();   // seq -> {resolve, reject}
+  const saves = new Map();   // id -> {path, cancelled}
+  const savesDone = [];      // {id, ok, bytes, error} for savePoll
+
+  function startWorker() {
+    if (worker || workerFailed) return worker;
+    try {
+      if (typeof Worker !== 'function' || typeof CompressionStream !== 'function' || !window.indexedDB) throw new Error('no Worker / CompressionStream / IndexedDB');
+      const url = URL.createObjectURL(new Blob([`(${workerMain})();`], { type: 'text/javascript' }));
+      worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      worker.onmessage = onWorkerMessage;
+      worker.onerror = (e) => workerDied('error: ' + (e.message || e));
+      worker.postMessage({ op: 'init', db: DB_NAME, store: STORE });
+    } catch (e) {
+      log('save worker: none (' + e + '): saves are written on the main thread');
+      worker = null, workerFailed = true;
+    }
+    return worker;
+  }
+
+  function workerDied(why) {
+    log('save worker ' + why + ': saves are written on the main thread from now on');
+    try { worker.terminate(); } catch (e) {}
+    worker = null, workerFailed = true;
+    for (const [id] of saves) savesDone.push({ id, ok: false, bytes: 0, error: 'the save worker failed' });
+    saves.clear();
+    for (const [, c] of calls) c.reject(new Error('the save worker failed'));
+    calls.clear();
+  }
+
+  function call(msg, transfer) {
+    return new Promise((resolve, reject) => {
+      msg.seq = ++callSeq;
+      calls.set(msg.seq, { resolve, reject });
+      worker.postMessage(msg, transfer || []);
+    });
+  }
+
+  function onWorkerMessage(e) {
+    const m = e.data;
+    if (m.op === 'ack') {
+      const c = calls.get(m.seq);
+      calls.delete(m.seq);
+      if (c) m.error ? c.reject(new Error(m.error)) : c.resolve();
+      return;
+    }
+    if (m.op !== 'saved') return;
+    const job = saves.get(m.id);
+    saves.delete(m.id);
+    if (!job) return;
+    let ok = !!m.file, error = m.error || '';
+    if (ok && !job.cancelled) {
+      try {
+        // the file in one synchronous write: nothing else runs between, no .tmp needed here
+        writeIntoFs(job.path, new Uint8Array(m.file), 0);
+        if (m.stored) {   // already in IndexedDB: not again from the FS hooks
+          dirty.delete(job.path);
+          const st = statFile(job.path);
+          if (st) known.set(job.path, mtimeOf(st));
+          stats.saved++, stats.lastSave = Date.now();
+        }
+      } catch (err) { ok = false, error = 'FS: ' + err; }
+    }
+    log(`${job.cancelled ? 'dropped' : ok ? 'saved' : 'NOT saved'} ${job.path.slice(ROOT.length + 1)}` +
+        `${ok ? ` (${m.file.byteLength} bytes, ${m.ms.toFixed(0)} ms in the worker${m.stored ? '' : ', IndexedDB from the FS hooks'})` : ''}` +
+        `${error ? ': ' + error : ''}`);
+    savesDone.push({ id: m.id, ok: ok || job.cancelled, bytes: ok ? m.file.byteLength : 0, error });
+  }
+
+  // chunks: [{tag, version, deflate, data: Uint8Array owning its buffer}] -> an id, or 0 (no worker)
+  function saveStart(path, major, minor, chunks) {
+    if (!fsReady() || !startWorker()) return 0;
+    path = normalize(path);
+    const id = ++saveSeq;
+    saves.set(id, { path, cancelled: false });
+    worker.postMessage({ op: 'save', id, path, major, minor, store: armed && inScope(path),
+                         chunks: chunks.map((c) => ({ tag: c.tag, version: c.version, deflate: c.deflate, data: c.data.buffer })) },
+                       chunks.map((c) => c.data.buffer));
+    return id;
+  }
+  // The game removed the slot after asking for this save: its file is not put into /game, and
+  // its IndexedDB record (if the worker already stored it) goes, in the queue after it.
+  function saveCancel(id) {
+    const job = saves.get(id);
+    if (!job || !worker) return;
+    job.cancelled = true;
+    flushing = flushing.then(() => call({ op: 'store', puts: [], dels: [job.path] })).catch((e) => log('save failed: ' + e));
+  }
+  const savePoll = () => savesDone.shift() || null;
+  // Waits for the saves in flight and persist's own writes.
+  const settled = () => (worker ? call({ op: 'store', puts: [], dels: [] }).catch(() => {}) : Promise.resolve());
+
   // ------------------------------------------------------------------ zip (export / import)
   const CRC = (() => {
     const t = new Uint32Array(256);
@@ -325,11 +527,13 @@
   // ------------------------------------------------------------------ public API
   async function list() {
     await flush();
+    await settled();
     return (await allRecords()).map((r) => ({ name: r.path.slice(ROOT.length + 1), size: r.data.byteLength, mtime: r.mtime }));
   }
   async function exportZip() {
     if (armed) scan();
     await flush();
+    await settled();
     const recs = await allRecords();
     return { count: recs.length, blob: zip(recs.map((r) => ({ name: r.path.slice(ROOT.length + 1), data: new Uint8Array(r.data), mtime: r.mtime }))) };
   }
@@ -374,6 +578,7 @@
 
   window.caponePersist = {
     list, exportZip, download, importZip, pickAndImport, flush: () => (armed ? scan() : flush()),
+    saveStart, saveCancel, savePoll, settled,
     clear: () => { known.clear(); return clearAll(); }, stats, get armed() { return armed; },
   };
   if (typeof Module !== 'undefined') install(Module);
