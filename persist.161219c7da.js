@@ -95,7 +95,7 @@
     for (const n of names) {
       if (n === '.' || n === '..') continue;
       const p = (dir === '/' ? '' : dir) + '/' + n;
-      if (SKIP.test(p + '/')) continue;
+      if (SKIP.test(p) || SKIP.test(p + '/')) continue;   // a file (ep22.epi) or a folder (Sound/)
       let st;
       try { st = FS.stat(p); } catch (e) { continue; }
       if (FS.isDir(st.mode)) walk(p, out);
