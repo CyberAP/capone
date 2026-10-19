@@ -7,7 +7,7 @@
   background: radial-gradient(ellipse at 45% 45%, rgba(0, 0, 0, .35), rgba(0, 0, 0, .88) 75%), var(--bg-image, none) center / cover no-repeat, #0b0d0a;
   user-select: none; -webkit-user-select: none;
 }
-#landing[hidden], #corner[hidden], #corner-panel[hidden], #landing [hidden] { display: none !important; }
+#landing[hidden], #corner[hidden], #landing [hidden] { display: none !important; }
 .landing-inner { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
                  gap: 14px; padding: 24px 16px 8px; box-sizing: border-box; width: 100%; max-width: 900px; margin: 0 auto; }
 #landing h1 { margin: 0; width: 100%; }
@@ -42,19 +42,14 @@
 #landing.unsupported .landing-load { display: none; }
 @media (max-width: 600px) { .landing-button { min-width: 0; width: 100%; } }
 
-/* in-game page menu: top right, faint, hidden while the mouse is captured */
-#corner { position: fixed; top: calc(6px + env(safe-area-inset-top)); right: calc(6px + env(safe-area-inset-right)); z-index: 15; font: 13px system-ui, sans-serif; text-align: right; }
+/* in-game fullscreen button (desktop only): top right, faint, hidden while the mouse is captured */
+#corner { position: fixed; top: 6px; right: 6px; z-index: 15; width: 28px; height: 28px; padding: 5px; cursor: pointer;
+          border: 1px solid rgba(215, 180, 90, .6); border-radius: 3px; background: rgba(11, 52, 20, .55); opacity: .45; }
+#corner:hover, #corner:focus-visible { opacity: 1; }
 #corner.locked { display: none; }
-#corner-toggle { width: 28px; height: 28px; padding: 0; border: 1px solid rgba(215, 180, 90, .6); border-radius: 3px; cursor: pointer;
-                 color: #e9f3d2; background: rgba(11, 52, 20, .55); opacity: .45; font-size: 16px; line-height: 1; }
-#corner-toggle:hover, #corner-toggle:focus-visible { opacity: 1; }
-#corner-panel { margin-top: 4px; padding: 6px; display: flex; flex-direction: column; gap: 4px; min-width: 200px;
-                background: rgba(8, 20, 10, .92); border: 1px solid #d7b45a; border-radius: 3px; }
-#corner-panel button { padding: 6px 10px; border: 0; border-radius: 2px; text-align: left; cursor: pointer; color: #e9f3d2;
-                       background: rgba(29, 107, 44, .5); font: inherit; }
-#corner-panel button:hover { background: rgba(47, 138, 62, .8); }
-#corner-note { margin: 0; color: #cfd6bf; font-size: 12px; text-align: left; }
-#corner-note:empty { display: none; }
+#corner svg { display: block; width: 16px; height: 16px; fill: none; stroke: #e9f3d2; stroke-width: 1.6; }
+#corner .fs-out, #corner.fs .fs-in { display: none; }
+#corner.fs .fs-out { display: block; }
 
 /* the browser left fullscreen by itself during the game (iOS's swipe down): one tap back */
 #fs-again { position: fixed; z-index: 16; top: calc(6px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);

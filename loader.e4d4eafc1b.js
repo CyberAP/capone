@@ -49,26 +49,6 @@
     console.log('[release] ' + msg);
   }
 
-  // Saves on the landing page: work before the game is loaded (IndexedDB only).
-  function savesUi(exportBtn, importBtn, note) {
-    const P = window.caponePersist;
-    if (!P) { exportBtn.disabled = importBtn.disabled = true; return; }
-    const say = (t) => { note.textContent = t; };
-    exportBtn.addEventListener('click', async () => {
-      try { const n = await P.download(); say(n ? `Сохранено файлов: ${n}` : 'Сохранений пока нет'); }
-      catch (e) { say('Не удалось: ' + e.message); }
-    });
-    importBtn.addEventListener('click', async () => {
-      try {
-        const r = await P.pickAndImport();
-        if (!r) return;
-        say(`Загружено файлов: ${r.count}`);
-        if (r.running && confirm('Сохранения загружены. Игра прочитает их после перезапуска. Перезапустить сейчас?')) location.reload();
-      } catch (e) { say('Не удалось: ' + e.message); }
-    });
-  }
-  // the landing page has no save export/import any more (the in-game ☰ menu keeps them)
-
   // ------------------------------------------------------------------ fullscreen
   // (WebKit: the prefixed names too.) wantFs: the player chose fullscreen (the button, Alt+Enter);
   // the browser leaving it by itself during the game (iOS's swipe down) offers it back (fsAgain).
@@ -104,7 +84,7 @@
   }
   const toggleFullscreen = () => (isFs() ? exitFullscreen() : enterFullscreen());
   // «На весь экран»: small, top centre, when the browser took the game out of fullscreen by itself
-  // (the player did not ask: the corner menu's switch and Alt+Enter clear wantFs). Nothing pauses.
+  // (the player did not ask: the corner button and Alt+Enter clear wantFs). Nothing pauses.
   const fsAgain = document.createElement('button');
   fsAgain.id = 'fs-again';
   fsAgain.type = 'button';
@@ -345,18 +325,17 @@
     loadScript(R.files.js.url).catch((e) => fail('Не удалось загрузить игру: ' + e.message));
   }
 
-  // ------------------------------------------------------------------ in-game corner menu
-  // Shown only while the mouse is free (pointer lock off: Esc), top right, faint.
+  // ------------------------------------------------------------------ in-game corner button
+  // (user, 2026-10-19: «Бургер меню на айфоне вообще убери… На десктопе бургер меню заменяем кнопкой
+  // полного экрана».) Desktop only, top right, faint; hidden while the mouse is locked.
   function cornerMenu() {
-    const box = $('corner');
-    box.hidden = false;
-    const panel = $('corner-panel');
-    $('corner-toggle').addEventListener('click', () => { panel.hidden = !panel.hidden; });
-    if (iPhone) $('corner-fullscreen').hidden = true;
-    else $('corner-fullscreen').addEventListener('click', () => { panel.hidden = true; toggleFullscreen(); });
-    savesUi($('corner-export'), $('corner-import'), $('corner-note'));
-    const sync = () => box.classList.toggle('locked', !!document.pointerLockElement);
-    document.addEventListener('pointerlockchange', () => { sync(); if (document.pointerLockElement) panel.hidden = true; });
+    if (iPhone) return;
+    const btn = $('corner');
+    btn.hidden = false;
+    btn.addEventListener('click', () => { toggleFullscreen(); btn.blur(); });
+    const sync = () => { btn.classList.toggle('locked', !!document.pointerLockElement); btn.classList.toggle('fs', isFs()); };
+    document.addEventListener('pointerlockchange', sync);
+    for (const e of fsEvents) document.addEventListener(e, sync);
     sync();
   }
 })();

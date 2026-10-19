@@ -52,13 +52,13 @@
    "raw": 29412,
    "wire": 29412
   },
-  "loader.c2cecb3c92.js": {
-   "raw": 20090,
-   "wire": 20090
+  "loader.e4d4eafc1b.js": {
+   "raw": 18938,
+   "wire": 18938
   },
-  "landing.0cb7f53f8c.css": {
-   "raw": 7043,
-   "wire": 7043
+  "landing.afeea407eb.css": {
+   "raw": 6440,
+   "wire": 6440
   },
   "logo.3824ebf504.webp": {
    "raw": 77432,
@@ -69,8 +69,8 @@
    "wire": 181748
   },
   "index.html": {
-   "raw": 32678,
-   "wire": 32678
+   "raw": 32633,
+   "wire": 32633
   }
  },
  "assets_bytes": 10010588
