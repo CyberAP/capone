@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Тест полноэкранного режима</title>
+<style>
+:root{--bg:#111;--fg:#eee;--acc:#e0b84a;--btn:#262626;--mut:#aaa}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,sans-serif;-webkit-text-size-adjust:100%}
+html.lock,html.lock body{overflow:hidden;overscroll-behavior:none;height:100dvh;touch-action:none}
+html.lock body{position:fixed;inset:0;width:100%}
+html.lock #menu{display:none}
+html.v4,html.v4 *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#menu{padding:16px;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));padding-bottom:max(24px,env(safe-area-inset-bottom));max-width:980px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 8px}
+p{margin:6px 0;color:#ccc;font-size:15px}
+.info{background:#1c1c1c;border-radius:10px;padding:10px 12px;font:12px/1.45 ui-monospace,Menlo,monospace;word-break:break-word;white-space:pre-wrap;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;margin:14px 0}
+.vbtn{display:block;width:100%;text-align:left;min-height:96px;padding:14px;border:2px solid #444;border-radius:12px;background:var(--btn);color:var(--fg);font:inherit;cursor:pointer}
+.vbtn:active{border-color:var(--acc)}
+.vbtn b{display:block;font-size:19px;color:var(--acc);margin-bottom:4px}
+.vbtn span{font-size:14px;color:var(--mut)}
+.vbtn.six{border-color:#4a8a4a}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.big{min-height:52px;padding:10px 18px;font:600 17px/1.1 -apple-system,system-ui,sans-serif;border-radius:10px;border:0;background:var(--acc);color:#111;cursor:pointer}
+.big.sec{background:#3a3a3a;color:#eee}
+#stage{position:fixed;inset:0;display:none;background:#000;touch-action:none;overscroll-behavior:none}
+html.lock #stage{display:block}
+.fst{position:absolute;inset:0;width:100%;height:100%;touch-action:none;background:#14202a;overflow:hidden}
+canvas.fst{display:block}
+.fst:fullscreen{width:100%;height:100%}
+.fst:-webkit-full-screen{width:100%;height:100%}
+.pad{position:absolute;inset:0;background-color:#14202a;background-image:linear-gradient(#2c4a5e 1px,transparent 1px),linear-gradient(90deg,#2c4a5e 1px,transparent 1px);background-size:80px 80px}
+.domlog{position:absolute;left:8px;top:8px;right:8px;bottom:8px;margin:0;pointer-events:none;font:13px/17px ui-monospace,Menlo,monospace;color:#fff;white-space:pre-wrap;word-break:break-all;overflow:hidden}
+.domlog .box{background:rgba(0,0,0,.6);display:inline-block;max-width:100%;padding:4px 6px}
+.exitbox{position:absolute;display:flex;align-items:center;justify-content:center;background:#a33;color:#fff;font:700 18px/1 -apple-system,system-ui,sans-serif;border-radius:10px;pointer-events:none}
+#tb{position:absolute;left:0;right:0;bottom:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom));padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right));background:rgba(20,20,20,.94);touch-action:manipulation}
+#tb .big{min-height:50px;font-size:16px}
+html.infs #tb{display:none}
+#modal{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.85);display:none;flex-direction:column;padding:16px;padding-top:max(16px,env(safe-area-inset-top));gap:10px}
+#modal.on{display:flex}
+#modal textarea{flex:1;width:100%;box-sizing:border-box;font:12px/1.4 ui-monospace,Menlo,monospace;background:#111;color:#eee;border:1px solid #555;border-radius:8px;padding:8px;-webkit-user-select:text;user-select:text}
+#toast{position:fixed;left:50%;top:max(16px,env(safe-area-inset-top));transform:translateX(-50%);z-index:30;background:#2d5a2d;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;display:none;max-width:90vw;text-align:center}
+#probe{position:fixed;inset:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+</style>
+</head>
+<body>
+<div id="probe"></div>
+<div id="menu">
+  <h1>Тест: почему свайп вниз выкидывает из полноэкранного режима</h1>
+  <p>Нажмите вариант → страница войдёт в полноэкранный режим. Проведите <b>одним пальцем вниз</b> по сетке несколько раз (как будто двигаете карту): сначала из середины экрана, потом от самого верхнего края. Красная кнопка «ВЫХОД» в правом верхнем углу — штатный выход. Затем «Скопировать лог» и пришлите текст.</p>
+  <div class="info" id="dev"></div>
+  <div class="grid" id="vlist"></div>
+  <div class="row">
+    <button class="big" id="copyMain" data-ui>Скопировать лог</button>
+    <button class="big sec" id="clearMain" data-ui>Очистить лог</button>
+  </div>
+  <p>Лог общий для всех вариантов — можно пройти все 6 подряд и скопировать один раз.</p>
+</div>
+
+<div id="stage">
+  <div id="tb" data-ui>
+    <button class="big" id="bEnter" data-ui>▶ Полноэкранный</button>
+    <button class="big sec" id="bCopy" data-ui>Скопировать лог</button>
+    <button class="big sec" id="bClear" data-ui>Очистить</button>
+    <button class="big sec" id="bBack" data-ui>← К вариантам</button>
+  </div>
+</div>
+
+<div id="modal" data-ui>
+  <div style="color:#fff;font-weight:600">Автокопирование не сработало. Текст выделен — нажмите «Скопировать» в меню iOS (или удерживайте палец на тексте → «Выбрать всё» → «Скопировать»).</div>
+  <textarea id="copyta" readonly></textarea>
+  <button class="big" id="modalClose" data-ui>Закрыть</button>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var T0=performance.now();
+var LOG=[];
+var cur=null;
+var raf=0;
+
+function ts(){return ((performance.now()-T0)/1000).toFixed(3)}
+function log(s){LOG.push('+'+ts()+'s '+s);if(LOG.length>3000)LOG.shift();dirty()}
+function desc(el){if(!el)return 'null';var s=el.tagName?el.tagName.toLowerCase():String(el);if(el.id)s+='#'+el.id;return s}
+function fsEl(){return document.fullscreenElement||document.webkitFullscreenElement||null}
+function fsDesc(){return 'fullscreenElement='+desc(document.fullscreenElement)+' webkitFullscreenElement='+desc(document.webkitFullscreenElement)}
+function isUI(t){return !!(t&&t.closest&&t.closest('[data-ui]'))}
+
+function devInfo(){
+  var ua=navigator.userAgent;
+  var m=ua.match(/OS (\d+)[_.](\d+)(?:[_.](\d+))? like Mac/);
+  var v=ua.match(/Version\/([\d.]+)/);
+  var P=Element.prototype;
+  return [
+    'UA: '+ua,
+    'iOS (по UA): '+(m?[m[1],m[2],m[3]].filter(Boolean).join('.'):'не определён')+'   Safari: '+(v?v[1]:'?'),
+    'platform: '+navigator.platform+', maxTouchPoints: '+navigator.maxTouchPoints+', standalone: '+navigator.standalone,
+    'экран: '+screen.width+'x'+screen.height+', окно: '+innerWidth+'x'+innerHeight+', dpr: '+devicePixelRatio,
+    'fullscreenEnabled: '+document.fullscreenEnabled+', webkitFullscreenEnabled: '+document.webkitFullscreenEnabled,
+    'Element.requestFullscreen: '+('requestFullscreen' in P)+', webkitRequestFullscreen: '+('webkitRequestFullscreen' in P),
+    'PointerEvent: '+('PointerEvent' in window)+', TouchEvent: '+('TouchEvent' in window)+', GestureEvent: '+('GestureEvent' in window)
+  ].join('\n');
+}
+function safe(){var cs=getComputedStyle($('#probe'));return {t:parseFloat(cs.paddingTop)||0,r:parseFloat(cs.paddingRight)||0,b:parseFloat(cs.paddingBottom)||0,l:parseFloat(cs.paddingLeft)||0}}
+
+/* ---------- варианты ---------- */
+var V=[
+ {id:1,title:'1. Весь документ (html)',kind:'dom',fs:'doc',
+  desc:'requestFullscreen на <html>. touchstart/touchmove/touchend → preventDefault на window, capture, passive:false.'},
+ {id:2,title:'2. Отдельный div + navigationUI',kind:'dom',fs:'div',opts:{navigationUI:'hide'},
+  desc:'Полноэкранный — отдельный div на весь экран, requestFullscreen({navigationUI:"hide"}). preventDefault на самом div.'},
+ {id:3,title:'3. Canvas',kind:'canvas',ptr:true,
+  desc:'Полноэкранный элемент — <canvas> с touch-action:none. preventDefault на touch* (window) и на pointerdown/pointermove.'},
+ {id:4,title:'4. Canvas + gesture* + callout',kind:'canvas',ptr:true,gest:true,
+  desc:'Как 3, плюс preventDefault на gesturestart/gesturechange/gestureend, -webkit-user-select:none, -webkit-touch-callout:none.'},
+ {id:5,title:'5. Canvas, зона 60px сверху',kind:'canvas',ptr:true,band:60,
+  desc:'Как 3, но верхние 60px — красная полоса. Сравните свайпы, начатые ниже полосы и внутри неё: выкидывает ли только от края.'},
+ {id:6,title:'6. Автовозврат (запасной план)',kind:'canvas',ptr:true,restore:true,
+  desc:'Как 3. Если режим слетел — следующее касание (touchend/pointerup/click) снова вызывает requestFullscreen. Пробует и в том же touchend.'}
+];
+
+function buildMenu(){
+  $('#dev').textContent=devInfo();
+  var g=$('#vlist');
+  V.forEach(function(v){
+    var b=document.createElement('button');
+    b.className='vbtn'+(v.id===6?' six':'');b.setAttribute('data-ui','');
+    b.innerHTML='<b></b><span></span>';
+    b.querySelector('b').textContent=v.title;b.querySelector('span').textContent=v.desc;
+    b.addEventListener('click',function(){start(v)});
+    g.appendChild(b);
+  });
+}
+
+/* ---------- запуск варианта ---------- */
+function on(t,type,fn,opts){t.addEventListener(type,fn,opts);cur.ls.push([t,type,fn,opts])}
+
+function start(v){
+  stop();
+  cur={v:v,ls:[],cnt:{},moves:{},px:0,py:0,expectFs:false,userExit:false,wasFs:false,unexpectedAt:0,lastTouchStartAt:0,tried:{},exitRect:null};
+  document.documentElement.classList.add('lock');
+  if(v.gest)document.documentElement.classList.add('v4');
+  log('════ ВАРИАНТ '+v.title+' ════');
+  log(v.desc);
+  var stage=$('#stage'),el;
+  if(v.kind==='dom'){
+    el=document.createElement('div');el.className='fst';el.id='fsdiv';
+    var pad=document.createElement('div');pad.className='pad';
+    var pre=document.createElement('pre');pre.className='domlog';
+    var ex=document.createElement('div');ex.className='exitbox';ex.textContent='ВЫХОД';
+    el.appendChild(pad);el.appendChild(pre);el.appendChild(ex);
+    cur.pad=pad;cur.pre=pre;cur.exEl=ex;
+  }else{
+    el=document.createElement('canvas');el.className='fst';el.id='fscanvas';
+    cur.cv=el;
+  }
+  stage.insertBefore(el,stage.firstChild);
+  cur.el=el;
+  cur.fsTarget=v.fs==='doc'?document.documentElement:el;
+  cur.opts=v.opts;
+
+  // --- touch preventDefault ---
+  var tt=v.id===2?el:window;
+  var topt=v.id===2?{passive:false}:{passive:false,capture:true};
+  var nm=v.id===2?'div':'window';
+  var preventEnd=!v.restore; // в 6 touchend не гасим, чтобы мог прийти click
+  ['touchstart','touchmove','touchend'].forEach(function(type){
+    on(tt,type,touchHandler(type+'('+nm+')',preventEnd),topt);
+  });
+  on(window,'touchcancel',function(e){count('touchcancel');log('!!! touchcancel (iOS забрал жест) пальцев='+e.touches.length+' '+fsDesc())},{capture:true});
+
+  // --- pointer ---
+  if(v.ptr){
+    ['pointerdown','pointermove','pointerup','pointercancel'].forEach(function(type){
+      on(el,type,pointerHandler(type),{passive:false});
+    });
+  }
+  // --- gesture ---
+  if(v.gest){
+    ['gesturestart','gesturechange','gestureend'].forEach(function(type){
+      on(document,type,function(e){count(type);e.preventDefault();log(type+' cancelable='+e.cancelable+' prevented='+e.defaultPrevented+' scale='+(e.scale!=null?(+e.scale).toFixed(2):'?'))},{passive:false,capture:true});
+    });
+  }
+  // --- панорама карты (только визуально) ---
+  on(window,'touchstart',panStart,{passive:true,capture:true});
+  on(window,'touchmove',panMove,{passive:true,capture:true});
+  // --- выход по красной кнопке ---
+  on(window,'touchend',exitHit,{passive:true,capture:true});
+  on(window,'pointerup',function(e){if(!isUI(e.target))tryExitAt(e.clientX,e.clientY)},{capture:true});
+  on(window,'mouseup',function(e){if(!isUI(e.target))tryExitAt(e.clientX,e.clientY)},{capture:true});
+  // --- автовозврат ---
+  if(v.restore){
+    on(window,'touchend',function(e){restoreTry('touchend',e)},{capture:true});
+    on(window,'pointerup',function(e){restoreTry('pointerup',e)},{capture:true});
+    on(window,'click',function(e){restoreTry('click',e)},{capture:true});
+  }
+  dirty();
+  enter('кнопка варианта');
+}
+
+function stop(){
+  if(!cur)return;
+  cur.ls.forEach(function(a){a[0].removeEventListener(a[1],a[2],a[3])});
+  if(cur.el&&cur.el.parentNode)cur.el.parentNode.removeChild(cur.el);
+  cur=null;
+  document.documentElement.classList.remove('lock','v4');
+}
+
+function back(){
+  if(cur){cur.userExit=true;cur.expectFs=false}
+  if(fsEl())exitFs();
+  stop();
+  $('#dev').textContent=devInfo();
+}
+
+/* ---------- обработчики ---------- */
+function count(n){if(cur){cur.cnt[n]=(cur.cnt[n]||0)+1;dirty()}}
+
+function touchHandler(name,preventEnd){
+  return function(e){
+    if(isUI(e.target))return;
+    count(name);
+    var c=e.cancelable;
+    if(e.type!=='touchend'||preventEnd)e.preventDefault();
+    var dp=e.defaultPrevented;
+    var t=e.changedTouches[0]||{clientX:0,clientY:0};
+    if(e.type==='touchstart'){
+      cur.lastTouchStartAt=performance.now();
+      cur.tried={};
+      var y=t.clientY;
+      log(name+': x='+Math.round(t.clientX)+' y='+Math.round(y)+(y<60?' [ВЕРХНИЕ 60px]':'')+' (экранY='+Math.round(t.screenY)+') пальцев='+e.touches.length+' cancelable='+c+' prevented='+dp+' FS='+desc(fsEl()));
+      cur.moves[name]={n:0,nc:0,np:0,sx:t.clientX,sy:t.clientY};
+    }else if(e.type==='touchmove'){
+      var key=name.replace('touchmove','touchstart');
+      var m=cur.moves[key]||(cur.moves[key]={n:0,nc:0,np:0,sx:t.clientX,sy:t.clientY});
+      m.n++;if(!c)m.nc++;if(!dp)m.np++;
+      if(m.n===1)log(name+': первый, cancelable='+c+' prevented='+dp);
+    }else{
+      var k2=name.replace('touchend','touchstart');
+      var mm=cur.moves[k2]||{n:0,nc:0,np:0,sx:t.clientX,sy:t.clientY};
+      log(name+': x='+Math.round(t.clientX)+' y='+Math.round(t.clientY)+' dy='+Math.round(t.clientY-mm.sy)+' | touchmove ×'+mm.n+' (не cancelable: '+mm.nc+', НЕ отменено: '+mm.np+') | cancelable='+c+' prevented='+dp+' FS='+desc(fsEl()));
+    }
+  };
+}
+
+function pointerHandler(type){
+  var st={n:0,np:0};
+  return function(e){
+    count(type);
+    if(type==='pointerdown'||type==='pointermove')e.preventDefault();
+    if(type==='pointerdown'){st.n=0;st.np=0;log(type+': '+e.pointerType+' x='+Math.round(e.clientX)+' y='+Math.round(e.clientY)+' cancelable='+e.cancelable+' prevented='+e.defaultPrevented)}
+    else if(type==='pointermove'){st.n++;if(!e.defaultPrevented)st.np++}
+    else log(type+': '+e.pointerType+' pointermove ×'+st.n+' (НЕ отменено: '+st.np+')'+(type==='pointercancel'?' !!! браузер отменил указатель':''));
+  };
+}
+
+function panStart(e){if(isUI(e.target)||!cur)return;var t=e.touches[0];cur.pl={x:t.clientX,y:t.clientY}}
+function panMove(e){if(isUI(e.target)||!cur||!cur.pl)return;var t=e.touches[0];cur.px+=t.clientX-cur.pl.x;cur.py+=t.clientY-cur.pl.y;cur.pl={x:t.clientX,y:t.clientY};dirty()}
+
+function exitRect(){
+  var el=cur.el,W=el.clientWidth,s=safe();
+  return {x:W-170-Math.max(10,s.r),y:Math.max(10,s.t)+(cur.v.band?0:0),w:160,h:60};
+}
+function exitHit(e){if(isUI(e.target)||!cur)return;var t=e.changedTouches[0];if(t)tryExitAt(t.clientX,t.clientY)}
+function tryExitAt(x,y){
+  if(!cur||!fsEl()||cur.userExit)return;
+  var r=cur.exitRect||exitRect(),b=cur.el.getBoundingClientRect();
+  x-=b.left;y-=b.top;
+  if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h){
+    cur.userExit=true;cur.expectFs=false;
+    log('нажата ВЫХОД → exitFullscreen (штатно)');
+    exitFs();
+  }
+}
+function exitFs(){
+  try{
+    var p=document.exitFullscreen?document.exitFullscreen():(document.webkitExitFullscreen?document.webkitExitFullscreen():null);
+    if(p&&p.catch)p.catch(function(err){log('exitFullscreen ошибка: '+err)});
+  }catch(err){log('exitFullscreen исключение: '+err)}
+}
+
+/* ---------- вход ---------- */
+function enter(src){
+  if(!cur)return;
+  var el=cur.fsTarget,opts=cur.opts;
+  cur.userExit=false;cur.expectFs=true;
+  log('→ запрос FS ('+src+') на '+desc(el)+(opts?' opts='+JSON.stringify(opts):''));
+  var p;
+  try{
+    if(el.requestFullscreen)p=opts?el.requestFullscreen(opts):el.requestFullscreen();
+    else if(el.webkitRequestFullscreen)p=el.webkitRequestFullscreen();
+    else{log('!!! нет Fullscreen API на этом элементе');return}
+  }catch(err){log('!!! requestFullscreen исключение ('+src+'): '+err);return}
+  if(p&&p.then){
+    p.then(function(){log('✔ ВХОД ОК ('+src+') '+fsDesc())},
+           function(err){log('✘ ВХОД ОТКЛОНЁН ('+src+'): '+(err&&err.name)+' '+(err&&err.message))});
+  }else{
+    setTimeout(function(){log('(без Promise) через 400мс после «'+src+'»: '+(fsEl()?'✔ в FS':'✘ не в FS'))},400);
+  }
+}
+
+function restoreTry(src,e){
+  if(!cur||!cur.expectFs||fsEl()||isUI(e.target))return;
+  if(cur.tried[src])return;
+  cur.tried[src]=true;
+  var same=cur.unexpectedAt&&cur.lastTouchStartAt<cur.unexpectedAt;
+  log('АВТОВОЗВРАТ: '+src+' '+(same?'(ТОТ ЖЕ жест, что выкинул)':'(следующее касание)'));
+  enter('автовозврат/'+src+(same?'/тот же жест':''));
+}
+
+/* ---------- события документа ---------- */
+function onFsChange(e){
+  var f=fsEl();
+  document.documentElement.classList.toggle('infs',!!f);
+  log('⚑ '+e.type+': '+fsDesc());
+  if(!cur){dirty();return}
+  if(f){cur.wasFs=true;cur.unexpectedAt=0}
+  else if(cur.wasFs){
+    cur.wasFs=false;
+    if(cur.userExit)log('выход штатный (кнопка)');
+    else{
+      cur.unexpectedAt=performance.now();
+      var since=cur.lastTouchStartAt?Math.round(cur.unexpectedAt-cur.lastTouchStartAt):-1;
+      log('!!! НЕОЖИДАННЫЙ ВЫХОД из FS, через '+since+' мс после последнего touchstart'+(cur.v.restore?' — жду касания для автовозврата':''));
+    }
+  }
+  setTimeout(dirty,50);
+}
+document.addEventListener('fullscreenchange',onFsChange);
+document.addEventListener('webkitfullscreenchange',onFsChange);
+function onFsErr(e){log('!!! '+e.type+' на '+desc(e.target))}
+document.addEventListener('fullscreenerror',onFsErr);
+document.addEventListener('webkitfullscreenerror',onFsErr);
+var rzT=0;
+window.addEventListener('resize',function(){clearTimeout(rzT);rzT=setTimeout(function(){log('resize '+innerWidth+'x'+innerHeight+(window.visualViewport?' vv='+Math.round(visualViewport.width)+'x'+Math.round(visualViewport.height):''));if(cur)cur.exitRect=null},120)});
+document.addEventListener('visibilitychange',function(){log('visibilitychange: '+document.visibilityState)});
+window.addEventListener('orientationchange',function(){log('orientationchange')});
+window.addEventListener('error',function(e){log('JS ОШИБКА: '+e.message+' @'+e.lineno)});
+
+/* ---------- отрисовка ---------- */
+function dirty(){if(!raf)raf=requestAnimationFrame(render)}
+function statusLines(){
+  var c=cur.cnt,ks=Object.keys(c);
+  return [
+    'Вариант '+cur.v.title,
+    'FS: '+desc(document.fullscreenElement)+'  webkitFS: '+desc(document.webkitFullscreenElement),
+    'окно '+innerWidth+'x'+innerHeight+(window.visualViewport?'  vv '+Math.round(visualViewport.height):''),
+    'сработало: '+(ks.length?ks.map(function(k){return k+'='+c[k]}).join(' '):'—')
+  ];
+}
+function render(){
+  raf=0;
+  if(!cur)return;
+  var st=statusLines(),lines=LOG.slice(-80).reverse();
+  cur.exitRect=exitRect();
+  if(cur.v.kind==='dom'){
+    cur.pad.style.backgroundPosition=cur.px+'px '+cur.py+'px';
+    var r=cur.exitRect,ex=cur.exEl;
+    ex.style.left=r.x+'px';ex.style.top=r.y+'px';ex.style.width=r.w+'px';ex.style.height=r.h+'px';
+    ex.style.display=fsEl()?'flex':'none';
+    var s=safe();
+    cur.pre.style.left=Math.max(8,s.l)+'px';cur.pre.style.top=Math.max(8,s.t)+'px';cur.pre.style.right=(r.w+Math.max(20,s.r)+10)+'px';
+    cur.pre.innerHTML='<span class="box"></span>';
+    cur.pre.firstChild.textContent=st.join('\n')+'\n────────\n'+lines.join('\n');
+  }else drawCanvas(st,lines);
+}
+function drawCanvas(st,lines){
+  var c=cur.cv,ctx=c.getContext('2d'),d=window.devicePixelRatio||1;
+  var W=c.clientWidth||innerWidth,H=c.clientHeight||innerHeight;
+  if(c.width!==Math.round(W*d)||c.height!==Math.round(H*d)){c.width=Math.round(W*d);c.height=Math.round(H*d)}
+  ctx.setTransform(d,0,0,d,0,0);
+  ctx.fillStyle='#14202a';ctx.fillRect(0,0,W,H);
+  var g=80,ox=((cur.px%g)+g)%g,oy=((cur.py%g)+g)%g,x,y;
+  ctx.strokeStyle='#2c4a5e';ctx.lineWidth=1;ctx.beginPath();
+  for(x=ox;x<W;x+=g){ctx.moveTo(x+.5,0);ctx.lineTo(x+.5,H)}
+  for(y=oy;y<H;y+=g){ctx.moveTo(0,y+.5);ctx.lineTo(W,y+.5)}
+  ctx.stroke();
+  ctx.fillStyle='#3d6a85';
+  for(x=ox;x<W;x+=g)for(y=oy;y<H;y+=g){ctx.beginPath();ctx.arc(x,y,3,0,7);ctx.fill()}
+  var s=safe(),band=cur.v.band||0;
+  if(band){
+    ctx.fillStyle='rgba(200,50,50,.55)';ctx.fillRect(0,0,W,band);
+    ctx.fillStyle='#fff';ctx.font='600 14px -apple-system,system-ui,sans-serif';ctx.textBaseline='middle';
+    ctx.fillText('ВЕРХНИЕ 60px: свайп отсюда vs. свайп ниже',Math.max(10,s.l),band/2);
+  }
+  var r=cur.exitRect,fs=!!fsEl();
+  var left=Math.max(8,s.l),top=Math.max(band+6,s.t+6),boxW=Math.max(120,r.x-left-10);
+  var tbH=fs?0:76;
+  var lh=17,maxL=Math.floor((H-top-tbH-8)/lh);
+  ctx.font='13px ui-monospace,Menlo,monospace';ctx.textBaseline='top';
+  var cw=ctx.measureText('M').width||7.8,per=Math.max(10,Math.floor((boxW-12)/cw));
+  var out=[];
+  function push(txt,col){for(var i=0;i<txt.length||i===0;i+=per){out.push([txt.slice(i,i+per),col]);if(!txt.length)break}}
+  st.forEach(function(t){push(t,'#ffd75e')});
+  push('────────','#888');
+  for(var i=0;i<lines.length&&out.length<maxL;i++){
+    var t=lines[i];
+    push(t,t.indexOf('!!!')>=0||t.indexOf('✘')>=0?'#ff7b7b':(t.indexOf('✔')>=0?'#7dff7d':(t.indexOf('⚑')>=0?'#8fd3ff':'#fff')));
+  }
+  out=out.slice(0,maxL);
+  ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(left,top,boxW,out.length*lh+8);
+  out.forEach(function(o,i){ctx.fillStyle=o[1];ctx.fillText(o[0],left+6,top+4+i*lh)});
+  if(fs){
+    ctx.fillStyle='#a33';
+    ctx.beginPath();if(ctx.roundRect)ctx.roundRect(r.x,r.y,r.w,r.h,10);else ctx.rect(r.x,r.y,r.w,r.h);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='700 18px -apple-system,system-ui,sans-serif';ctx.textBaseline='middle';ctx.textAlign='center';
+    ctx.fillText('ВЫХОД',r.x+r.w/2,r.y+r.h/2);ctx.textAlign='left';
+  }
+}
+
+/* ---------- копирование ---------- */
+var toastT=0;
+function toast(s){var t=$('#toast');t.textContent=s;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(function(){t.style.display='none'},2500)}
+function copyLog(){
+  var text='=== fstest ===\n'+devInfo()+'\n\n'+LOG.join('\n');
+  function fallback(){
+    var ta=$('#copyta');ta.value=text;$('#modal').classList.add('on');
+    ta.focus();ta.select();try{ta.setSelectionRange(0,text.length)}catch(e){}
+    var ok=false;try{ok=document.execCommand('copy')}catch(e){}
+    if(ok)toast('Скопировано (запасной способ)');
+  }
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){toast('Лог скопирован ('+LOG.length+' строк)')},function(){fallback()});
+    }else fallback();
+  }catch(e){fallback()}
+}
+
+$('#bEnter').addEventListener('click',function(){enter('кнопка ▶')});
+$('#bCopy').addEventListener('click',copyLog);
+$('#copyMain').addEventListener('click',copyLog);
+$('#bClear').addEventListener('click',function(){LOG=[];dirty()});
+$('#clearMain').addEventListener('click',function(){LOG=[];toast('Лог очищен')});
+$('#bBack').addEventListener('click',back);
+$('#modalClose').addEventListener('click',function(){$('#modal').classList.remove('on')});
+
+buildMenu();
+log('страница загружена; '+devInfo().split('\n')[1]);
+})();
+</script>
+</body>
+</html>
