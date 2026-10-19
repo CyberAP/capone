@@ -320,7 +320,7 @@
       });
     }
     function waitMenu() {
-      let seen = -1;
+      let seen = -1, okSince = 0;
       const tEnd = performance.now() + 30000;
       const step = () => {
         let frames = 0, ok = false;
@@ -328,8 +328,10 @@
           ok = !!(Module._capone_menu_ready && Module._capone_menu_ready());
           frames = ok ? JSON.parse(UTF8ToString(Module._capone_stats())).frames : 0;
         } catch (e) {}
-        if (ok && seen < 0) seen = frames;           // a frame presented after this one: on the canvas
-        if ((ok && frames > seen) || performance.now() > tEnd) {
+        if (ok && seen < 0) { seen = frames; okSince = performance.now(); } // a frame presented after this one: on the canvas
+        // (WebKit / iOS: the presented-frame count may not move while the menu is idle; the menu is
+        // ready, so a short wait instead of the 30 s cap — iPhone waited the full 30 s)
+        if ((ok && (frames > seen || performance.now() - okSince > 300)) || performance.now() > tEnd) {
           menuShown = true;
           timing.menuReadyMs = performance.now() - t0;
           if (landing.classList.contains('started')) handOver();
