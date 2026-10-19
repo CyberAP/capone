@@ -1,19 +1,19 @@
 {
- "build": "2026-10-19-adf06df",
+ "build": "2026-10-19-556c7ac",
  "files": {
   "js": {
-   "url": "capone.5c722647a6.js",
-   "raw": 287596
+   "url": "capone.776eb9d29f.js",
+   "raw": 287796
   },
   "wasm": {
-   "url": "capone.2aa942fba7.wasm.br",
-   "size": 2584314,
-   "raw": 29904817
+   "url": "capone.af76701d65.wasm.br",
+   "size": 2599213,
+   "raw": 29996119
   },
   "data": {
-   "url": "capone.c1459158e4.data.br",
-   "size": 16910837,
-   "raw": 55574314
+   "url": "capone.ce1a8f5eae.data.br",
+   "size": 16850513,
+   "raw": 55513684
   },
   "brotli": {
    "url": "brotli-dec.62b26440a4.js",
@@ -32,17 +32,17 @@
   "subset /usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf: 370196 -> 60772 bytes"
  ],
  "sizes": {
-  "capone.2aa942fba7.wasm.br": {
-   "raw": 29904817,
-   "wire": 2584314
+  "capone.af76701d65.wasm.br": {
+   "raw": 29996119,
+   "wire": 2599213
   },
-  "capone.c1459158e4.data.br": {
-   "raw": 55574314,
-   "wire": 16910837
+  "capone.ce1a8f5eae.data.br": {
+   "raw": 55513684,
+   "wire": 16850513
   },
-  "capone.5c722647a6.js": {
-   "raw": 287596,
-   "wire": 287596
+  "capone.776eb9d29f.js": {
+   "raw": 287796,
+   "wire": 287796
   },
   "brotli-dec.62b26440a4.js": {
    "raw": 239797,
@@ -52,9 +52,9 @@
    "raw": 29412,
    "wire": 29412
   },
-  "loader.e4d4eafc1b.js": {
-   "raw": 18938,
-   "wire": 18938
+  "loader.627e993b8d.js": {
+   "raw": 21539,
+   "wire": 21539
   },
   "landing.afeea407eb.css": {
    "raw": 6440,
@@ -69,8 +69,8 @@
    "wire": 181748
   },
   "index.html": {
-   "raw": 32633,
-   "wire": 32633
+   "raw": 34070,
+   "wire": 34070
   }
  },
  "assets_bytes": 10010588

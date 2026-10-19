@@ -300,6 +300,57 @@
     const prevAbort = Module.onAbort;
     Module.onAbort = (what) => { fail('Ошибка игры: ' + what); if (prevAbort) prevAbort(what); };
 
+    // The game starts behind the landing as soon as it can (prestart), not at the click: its own
+    // start, the presenter's shaders and the menus' pictures (2-3 s, the menus held back meanwhile)
+    // happen while the landing still shows, so «Играть» goes straight to the main menu. The
+    // landing gives way only once the HD menu is what the canvas shows (capone_menu_ready, a frame
+    // presented after it said so): a click before that keeps the landing up until then; never a
+    // black canvas in between. While the landing shows, the game gets no keys or mouse buttons.
+    // The display mode is the page's size at the prestart (settled, as the click's was): a
+    // fullscreen switch after it is refitted like one during the game (capone_host.c).
+    let started = false, menuShown = false;
+    function prestart() {
+      if (started) return;
+      started = true;
+      settledSize().then((size) => {
+        timing.startSize = size;
+        timing.prestartMs = performance.now() - t0;
+        removeRunDependency('capone-start');
+        waitMenu();
+      });
+    }
+    function waitMenu() {
+      let seen = -1;
+      const tEnd = performance.now() + 30000;
+      const step = () => {
+        let frames = 0, ok = false;
+        try {
+          ok = !!(Module._capone_menu_ready && Module._capone_menu_ready());
+          frames = ok ? JSON.parse(UTF8ToString(Module._capone_stats())).frames : 0;
+        } catch (e) {}
+        if (ok && seen < 0) seen = frames;           // a frame presented after this one: on the canvas
+        if ((ok && frames > seen) || performance.now() > tEnd) {
+          menuShown = true;
+          timing.menuReadyMs = performance.now() - t0;
+          if (landing.classList.contains('started')) handOver();
+          return;
+        }
+        if (!ok) seen = -1;
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    function handOver() {
+      if (landing.hidden) return;
+      landing.hidden = true;
+      timing.startMs = performance.now() - t0;
+      const canvas = document.getElementById('canvas');
+      if (canvas) canvas.focus();
+      cornerMenu();
+    }
+    // the landing's keys and buttons are not the game's (SDL listens on the window / document)
+    const guard = (e) => { if (!landing.hidden && !(e.altKey && e.key === 'Enter')) e.stopPropagation(); };
+    for (const t of ['keydown', 'keyup', 'keypress', 'mouseup', 'wheel']) window.addEventListener(t, guard, true);
     function showPlay() {
       ready = true;
       timing.readyMs = performance.now() - t0;
@@ -308,18 +359,17 @@
       setStatus('');
       playBtn.disabled = false;
       playBtn.focus();
+      prestart();
       if (new URLSearchParams(location.search).has('autostart')) play();   // tests
     }
-    async function play() {
+    function play() {
       if (!ready || landing.classList.contains('started')) return;
       landing.classList.add('started');
-      timing.startSize = await settledSize();
-      landing.hidden = true;
-      timing.startMs = performance.now() - t0;
-      const canvas = document.getElementById('canvas');
-      if (canvas) canvas.focus();
-      removeRunDependency('capone-start');
-      cornerMenu();
+      timing.clickMs = performance.now() - t0;
+      // the click is the gesture the sound needs: the game's audio context started suspended
+      try { const ctx = Module.SDL2 && Module.SDL2.audioContext; if (ctx && ctx.state !== 'running') ctx.resume(); } catch (e) {}
+      if (menuShown) handOver();
+      else { setStatus('Подготовка…'); playBtn.disabled = true; }
     }
     playBtn.addEventListener('click', play);
     loadScript(R.files.js.url).catch((e) => fail('Не удалось загрузить игру: ' + e.message));
