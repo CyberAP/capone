@@ -61,10 +61,16 @@
             padding: 6px 14px; border: 1px solid rgba(215, 180, 90, .8); border-radius: 3px; cursor: pointer;
             font: 13px system-ui, sans-serif; color: #e9f3d2; background: rgba(11, 52, 20, .8); }
 #fs-again[hidden] { display: none; }
-/* iPhone / iPad: how to put the game on the home screen (once) */
-#ios-hint { position: absolute; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom)); transform: translateX(-50%);
-            display: flex; align-items: center; gap: 10px; max-width: calc(100% - 24px); box-sizing: border-box;
-            padding: 6px 6px 6px 12px; font: 13px system-ui, sans-serif; color: #e9f3d2;
-            background: rgba(8, 20, 10, .92); border: 1px solid #d7b45a; border-radius: 3px; }
-#ios-hint button { width: 28px; height: 28px; flex: none; padding: 0; border: 0; border-radius: 2px; cursor: pointer;
-                   color: #e9f3d2; background: rgba(29, 107, 44, .5); font-size: 14px; }
+/* iPhone: how to put the game on the home screen (the «На экран «Домой»» button) */
+#home-help { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+             padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+             background: rgba(0, 0, 0, .6); box-sizing: border-box; }
+#home-help[hidden] { display: none; }
+.home-card { max-width: 440px; max-height: 100%; overflow: auto; padding: 14px 18px; text-align: left; font: 14px/1.4 system-ui, sans-serif;
+             color: #e9f3d2; background: rgba(8, 20, 10, .96); border: 1px solid #d7b45a; border-radius: 3px; }
+.home-title { margin: 0 0 8px; font: 18px Georgia, "Times New Roman", serif; color: #f3d98e; }
+.home-card ol { margin: 0 0 8px; padding: 0; list-style: none; counter-reset: step; }
+.home-card li { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.home-icon { flex: none; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+             border: 1px solid rgba(215, 180, 90, .7); border-radius: 8px; background: rgba(29, 107, 44, .45) center / cover no-repeat; }
+.home-note { margin: 0 0 10px; color: #cfd6bf; font-size: 12.5px; }

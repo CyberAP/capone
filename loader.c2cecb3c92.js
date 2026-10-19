@@ -70,24 +70,65 @@
   // the landing page has no save export/import any more (the in-game ☰ menu keeps them)
 
   // ------------------------------------------------------------------ fullscreen
-  const isFs = () => !!document.fullscreenElement;
+  // (WebKit: the prefixed names too.) wantFs: the player chose fullscreen (the button, Alt+Enter);
+  // the browser leaving it by itself during the game (iOS's swipe down) offers it back (fsAgain).
+  // iPhone (any iOS browser is WebKit): no fullscreen at all (user, 2026-10-19: «Полноэкранный режим
+  // вообще убираем из айфона»; WebKit's swipe down out of it is by design, bugs.webkit.org 264215).
+  // The game fills the browser's viewport there; the whole screen is the home screen app's (below).
+  const iPhone = /iPhone|iPod/.test(navigator.userAgent);
+  const standalone = !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches));
+  window.capone.iPhone = iPhone;
+  const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const fsEvents = ['fullscreenchange', 'webkitfullscreenchange'];
+  const onFsChange = (f) => fsEvents.forEach((n) => document.addEventListener(n, f));
+  let wantFs = false;
   function enterFullscreen() {
     const el = document.documentElement;
-    if (isFs() || !el.requestFullscreen) return Promise.resolve();
+    const request = el.requestFullscreen ? (o) => el.requestFullscreen(o) : el.webkitRequestFullscreen ? () => el.webkitRequestFullscreen() : null;
+    if (iPhone) return Promise.resolve();
+    wantFs = true;
+    if (isFs() || !request) return Promise.resolve();
     return new Promise((resolve) => {
       let done = false;
       const finish = () => { if (!done) { done = true; resolve(); } };
-      document.addEventListener('fullscreenchange', () => setTimeout(finish, 100), { once: true });
-      el.requestFullscreen({ navigationUI: 'hide' }).catch(finish);
+      const once = () => { fsEvents.forEach((n) => document.removeEventListener(n, once)); setTimeout(finish, 100); };
+      onFsChange(once);
+      try { Promise.resolve(request({ navigationUI: 'hide' })).catch(finish); } catch (e) { finish(); }
       setTimeout(finish, 1500);
     });
   }
-  const toggleFullscreen = () => (isFs() ? document.exitFullscreen().catch(() => {}) : enterFullscreen());
+  function exitFullscreen() {
+    wantFs = false;
+    const exit = document.exitFullscreen ? () => document.exitFullscreen() : document.webkitExitFullscreen ? () => document.webkitExitFullscreen() : null;
+    try { if (exit) Promise.resolve(exit()).catch(() => {}); } catch (e) {}
+  }
+  const toggleFullscreen = () => (isFs() ? exitFullscreen() : enterFullscreen());
+  // «На весь экран»: small, top centre, when the browser took the game out of fullscreen by itself
+  // (the player did not ask: the corner menu's switch and Alt+Enter clear wantFs). Nothing pauses.
+  const fsAgain = document.createElement('button');
+  fsAgain.id = 'fs-again';
+  fsAgain.type = 'button';
+  fsAgain.textContent = 'На весь экран';
+  fsAgain.hidden = true;
+  document.body.appendChild(fsAgain);
+  fsAgain.addEventListener('click', () => { fsAgain.hidden = true; enterFullscreen(); });
+  // Touch devices only: on a desktop, leaving fullscreen (Esc) is the player's own choice.
+  const touchDevice = navigator.maxTouchPoints > 0 && !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+  onFsChange(() => { fsAgain.hidden = !touchDevice || isFs() || !wantFs || !landing.hidden; });
+  // ...and the next touch in the game brings it back by itself: a touchend / click is a user
+  // gesture, which the request needs (iOS's swipe down leaves fullscreen however the page guards
+  // its touches); the game's state is untouched (the same page, the canvas refits). The button
+  // stays as the visible way back.
+  const restore = () => {
+    if (iPhone || !touchDevice || isFs() || !wantFs || !landing.hidden) return;
+    enterFullscreen().then(() => { fsAgain.hidden = isFs() || !wantFs; });
+  };
+  document.addEventListener('touchend', restore, { capture: true, passive: true });
   // «Во весь экран» on the landing: the page goes fullscreen at once (the click is the gesture);
   // «Играть» then starts the game at that size. Hidden while the page is fullscreen.
   const syncFs = () => landing.classList.toggle('fullscreen', isFs());
-  document.addEventListener('fullscreenchange', syncFs);
-  if (!document.documentElement.requestFullscreen) fsBtn.hidden = true;
+  onFsChange(syncFs);
+  if (iPhone || (!document.documentElement.requestFullscreen && !document.documentElement.webkitRequestFullscreen)) fsBtn.hidden = true;
   fsBtn.addEventListener('click', () => { enterFullscreen().then(syncFs); });
   // The game takes the page's size as its screen once, when it starts (capone_host.c: the
   // display mode); a later resize only refits that picture into the page. So the start waits
@@ -95,7 +136,7 @@
   // the page a moment later. Settled = the same innerWidth x innerHeight x devicePixelRatio for
   // 250 ms and 4 animation frames, at most 2 s.
   let fsChangedAt = 0;
-  document.addEventListener('fullscreenchange', () => { fsChangedAt = performance.now(); });
+  onFsChange(() => { fsChangedAt = performance.now(); });
   function settledSize() {
     return new Promise((resolve) => {
       const tEnd = performance.now() + 2000;
@@ -111,8 +152,40 @@
   }
 
   window.addEventListener('keydown', (e) => {                       // Alt+Enter, as in old Windows games
-    if (e.altKey && (e.key === 'Enter' || e.code === 'Enter')) { e.preventDefault(); e.stopImmediatePropagation(); toggleFullscreen(); }
+    if (e.altKey && (e.key === 'Enter' || e.code === 'Enter') && !iPhone) { e.preventDefault(); e.stopImmediatePropagation(); toggleFullscreen(); }
   }, true);
+
+  // ------------------------------------------------------------------ iPhone: the home screen
+  // In Safari (not the installed app) a «На экран Домой» button where the fullscreen one is; it
+  // shows how to add the game (iOS lets no page do it): the app from the icon is the whole screen.
+  (function homeScreen() {
+    if (!iPhone || standalone) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'landing-home';
+    btn.className = 'landing-small';
+    btn.textContent = 'На экран «Домой»';
+    fsBtn.after(btn);
+    const share = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="#e9f3d2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10H5.5v10.5h13V10H16" fill="none" stroke="#e9f3d2" stroke-width="2" stroke-linejoin="round"/></svg>';
+    const add = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="none" stroke="#e9f3d2" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="#e9f3d2" stroke-width="2" stroke-linecap="round"/></svg>';
+    const box = document.createElement('div');
+    box.id = 'home-help';
+    box.hidden = true;
+    box.setAttribute('role', 'dialog');
+    box.innerHTML =
+      '<div class="home-card"><p class="home-title">Игра на весь экран</p><ol>' +
+      '<li><span class="home-icon">' + share + '</span>Нажмите «Поделиться» в панели Safari</li>' +
+      '<li><span class="home-icon">' + add + '</span>Выберите «На экран „Домой“»</li>' +
+      '<li><span class="home-icon home-app"></span>Откройте игру с её значка: она займёт весь экран, без панелей браузера</li></ol>' +
+      '<p class="home-note">У приложения на экране «Домой» свои сохранения. Чтобы перенести их из Safari: в игре ☰ → «Скачать сохранения», затем в приложении ☰ → «Загрузить сохранения».</p>' +
+      '<button type="button" class="landing-small" id="home-close">Понятно</button></div>';
+    landing.appendChild(box);
+    const icon = document.querySelector('link[rel=apple-touch-icon]');
+    if (icon) box.querySelector('.home-app').style.backgroundImage = 'url("' + icon.href + '")';
+    btn.addEventListener('click', () => { box.hidden = false; });
+    box.querySelector('#home-close').addEventListener('click', () => { box.hidden = true; });
+    box.addEventListener('click', (e) => { if (e.target === box) box.hidden = true; });
+  })();
 
   // ------------------------------------------------------------------ browser check
   const jspi = typeof WebAssembly === 'object' && typeof WebAssembly.Suspending === 'function';
@@ -279,7 +352,8 @@
     box.hidden = false;
     const panel = $('corner-panel');
     $('corner-toggle').addEventListener('click', () => { panel.hidden = !panel.hidden; });
-    $('corner-fullscreen').addEventListener('click', () => { panel.hidden = true; toggleFullscreen(); });
+    if (iPhone) $('corner-fullscreen').hidden = true;
+    else $('corner-fullscreen').addEventListener('click', () => { panel.hidden = true; toggleFullscreen(); });
     savesUi($('corner-export'), $('corner-import'), $('corner-note'));
     const sync = () => box.classList.toggle('locked', !!document.pointerLockElement);
     document.addEventListener('pointerlockchange', () => { sync(); if (document.pointerLockElement) panel.hidden = true; });

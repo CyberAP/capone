@@ -1,9 +1,0 @@
-MIT KEMAR HRTF measurements, "compact" set (128-tap HRIRs, 44.1 kHz, 16-bit big-endian, L/R interleaved,
-azimuth 0..180 = source on the right; mirror for the left side).
-Downloaded 2026-10-18 from the official page: https://sound.media.mit.edu/resources/KEMAR.html
-(file https://sound.media.mit.edu/resources/KEMAR/compact.tar.Z)
-
-Licence (verbatim from that page):
-  This data is Copyright 1994 by the MIT Media Laboratory. It is provided free with no restrictions
-  on use, provided the authors are cited when the data is used in any research or commercial application.
-Authors: Bill Gardner and Keith Martin, MIT Media Lab ("HRTF Measurements of a KEMAR Dummy-Head Microphone", 1994).
