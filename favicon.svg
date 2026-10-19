@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Drawn on the 32-px grid of a retina tab (16 CSS px × 2): the reticle lines sit on whole pixels -->
+  <circle cx="16" cy="16" r="16" fill="#e2bf5e"/>
+  <circle cx="16" cy="16" r="14" fill="#0b090d"/>
+  <rect x="15" y="2" width="2" height="28" fill="#22f05a"/>
+  <rect x="2" y="15" width="28" height="2" fill="#22f05a"/>
+  <!-- the «Свободный гангстер» fedora -->
+  <path d="M10.2 19.4 L10.8 12.6 Q11.2 10.6 13.4 11.1 Q15.1 11.9 16 11.9 Q16.9 11.9 18.6 11.1 Q20.8 10.6 21.2 12.6 L21.8 19.4 Z" fill="#ffd363"/>
+  <path d="M16 11.9 Q16.9 11.9 18.6 11.1 Q20.8 10.6 21.2 12.6 L21.8 19.4 L16 19.4 Z" fill="#deb65a"/>
+  <rect x="10.2" y="17" width="11.6" height="2" fill="#8c7131"/>
+  <path d="M4 18.6 Q16 20 28 18.6 L28 20.4 Q16 22.4 4 20.4 Z" fill="#ffd363"/>
+</svg>
